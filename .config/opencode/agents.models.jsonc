@@ -1,0 +1,29 @@
+{
+  "agents": {
+    "Prometheus": {
+      "model_provider": "anthropic",
+      "model_name": "claude-sonnet-4-20250514",
+      "enabled": true
+    },
+    "Momus": {
+      "model_provider": "anthropic",
+      "model_name": "claude-sonnet-4-20250514",
+      "enabled": true
+    },
+    "Metis": {
+      "model_provider": "anthropic",
+      "model_name": "claude-sonnet-4-20250514",
+      "enabled": true
+    },
+    "Librarian": {
+      "model_provider": "anthropic",
+      "model_name": "claude-sonnet-4-20250514",
+      "enabled": true
+    },
+    "Oracle": {
+      "model_provider": "anthropic",
+      "model_name": "claude-sonnet-4-20250514",
+      "enabled": true
+    }
+  }
+}

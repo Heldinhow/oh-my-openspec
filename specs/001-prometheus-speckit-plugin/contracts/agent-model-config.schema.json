@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oh-my-openspec.local/contracts/agent-model-config.schema.json",
+  "title": "Agent Model Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agents"
+  ],
+  "properties": {
+    "agents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Prometheus",
+        "Momus",
+        "Metis",
+        "Librarian",
+        "Oracle"
+      ],
+      "properties": {
+        "Prometheus": {"$ref": "#/$defs/agentConfig"},
+        "Momus": {"$ref": "#/$defs/agentConfig"},
+        "Metis": {"$ref": "#/$defs/agentConfig"},
+        "Librarian": {"$ref": "#/$defs/agentConfig"},
+        "Oracle": {"$ref": "#/$defs/agentConfig"}
+      }
+    }
+  },
+  "$defs": {
+    "agentConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_provider",
+        "model_name",
+        "enabled"
+      ],
+      "properties": {
+        "model_provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
