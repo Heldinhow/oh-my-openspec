@@ -22,16 +22,24 @@ specify → clarify → plan → tasks → handoff → build
 
 ## Setup
 
-\\\ash
+```bash
 npm install
-\\\
+```
+
+Running `npm install` configures OpenCode automatically for local use:
+
+- adds this plugin to `~/.config/opencode/opencode.json`
+- registers `Prometheus`, `Momus`, `Metis`, `Librarian`, and `Oracle`
+- sets `Prometheus` as the default agent when no default is configured yet
+
+Set `OH_MY_OPENSPEC_SKIP_INSTALL=1` to skip the automatic setup.
 
 ## Commands
 
-\\\ash
+```bash
 npm test        # Run tests
 npm run lint    # Type check
-\\\
+```
 
 ## Project Structure
 

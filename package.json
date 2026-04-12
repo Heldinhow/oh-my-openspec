@@ -2,7 +2,13 @@
   "name": "oh-my-openspec",
   "version": "0.1.0",
   "type": "module",
+  "main": "./src/prometheus-speckit/prometheus-speckit.ts",
+  "exports": {
+    ".": "./src/prometheus-speckit/index.ts",
+    "./server": "./src/prometheus-speckit/prometheus-speckit.ts"
+  },
   "scripts": {
+    "postinstall": "node ./scripts/install-opencode.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit"
