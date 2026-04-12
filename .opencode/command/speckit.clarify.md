@@ -194,21 +194,32 @@ Execution steps:
 
 7. Write the updated spec back to `FEATURE_SPEC`.
 
-8. Report completion (after questioning loop ends or early termination):
+8. **Update Feature State File**: After writing the updated spec, update `.specify/feature-state.json`:
+   - Read current state from `.specify/feature-state.json`
+   - Update `artifacts.spec.last_modified` to current ISO 8601 timestamp
+   - Update `artifacts.spec.hash` to new SHA256 hash of updated spec content
+   - Set `artifacts.spec.status` to "draft" (clarifications don't validate - Momus handles that)
+   - Update `updated_at` to current ISO 8601 timestamp
+   - Write updated state to `.specify/feature-state.json`
+
+9. Report completion (after questioning loop ends or early termination):
    - Number of questions asked & answered.
    - Path to updated spec.
    - Sections touched (list names).
    - Coverage summary table listing each taxonomy category with Status: Resolved (was Partial/Missing and addressed), Deferred (exceeds question quota or better suited for planning), Clear (already sufficient), Outstanding (still Partial/Missing but low impact).
-   - If any Outstanding or Deferred remain, recommend whether to proceed to `/speckit.plan` or run `/speckit.clarify` again later post-plan.
-   - Suggested next command.
+   - If any Outstanding or Deferred remain, explain in natural language whether to continue now or address later (e.g., "We can move forward with planning now, or if you'd like to think about these deferred items more, we can revisit them later.")
+   - Suggest next step in conversational language (e.g., "When you're ready, I'll help you create the implementation plan.")
+
+**Natural Language Principle**: All user-facing messages should use conversational language, not command syntax. Instead of saying "/speckit.plan", say "let's move on to planning" or "when you're ready to plan, just let me know."
 
 Behavior rules:
 
-- If no meaningful ambiguities found (or all potential questions would be low-impact), respond: "No critical ambiguities detected worth formal clarification." and suggest proceeding.
-- If spec file missing, instruct user to run `/speckit.specify` first (do not create a new spec here).
+- If no meaningful ambiguities found (or all potential questions would be low-impact), respond in natural language: "I didn't find any critical areas that need clarification. We're ready to move forward when you are."
+- If spec file missing, respond in natural language: "I don't see a specification yet. Would you like to create one first?" (do not create a new spec here).
 - Never exceed 5 total asked questions (clarification retries for a single question do not count as new questions).
 - Avoid speculative tech stack questions unless the absence blocks functional clarity.
 - Respect user early termination signals ("stop", "done", "proceed").
+- Use natural language for all user prompts, not command syntax.
 - If no questions asked due to full coverage, output a compact coverage summary (all categories Clear) then suggest advancing.
 - If quota reached with unresolved high-impact categories remaining, explicitly flag them under Deferred with rationale.
 

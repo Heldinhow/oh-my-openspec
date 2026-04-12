@@ -56,6 +56,25 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 The text the user typed after `/speckit.specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
 
+**State Machine Check**: Before proceeding, check for existing workflow state:
+1. Read `.specify/feature-state.json` if it exists
+2. If feature state exists with `current_stage` not "specify":
+   - If `checkpoints.SPEC_VALIDATED.status` is "approved":
+     - Inform user: "A validated spec already exists for this feature. Modifying it will invalidate the SPEC_VALIDATED checkpoint and require re-validation by Momus."
+     - Proceed with spec creation but note that re-validation will be required
+3. If `artifacts.spec.hash` exists and spec file exists:
+   - Calculate current spec hash and compare
+   - If different from stored hash:
+     - **Invalidate checkpoint**: Update `.specify/feature-state.json`:
+       - Set `checkpoints.SPEC_VALIDATED.status` to "pending"
+       - Set `checkpoints.SPEC_VALIDATED.timestamp` to null
+       - Set `checkpoints.SPEC_VALIDATED.agent` to null
+       - Add to `checkpoints.SPEC_VALIDATED.notes`: "Invalidated due to artifact modification"
+       - Set `artifacts.spec.status` to "draft"
+     - Log invalidation in validation_history
+     - Inform user: "The spec has been modified since last validation. The SPEC_VALIDATED checkpoint has been invalidated. Momus re-validation will be required before proceeding to plan."
+4. This ensures workflow integrity while allowing necessary corrections
+
 Given that feature description, do this:
 
 1. **Generate a concise short name** (2-4 words) for the feature:
@@ -136,7 +155,44 @@ Given that feature description, do this:
 
 6. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
-7. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
+7. **Initialize Feature State File**: After writing the spec, create or update the feature state file at `.specify/feature-state.json`:
+
+   a. **Check if state file exists**: Read `.specify/feature-state.json` if it exists
+   b. **If not exists or different feature**: Create new state with:
+      ```json
+      {
+        "feature": "<SPECIFY_FEATURE_DIRECTORY>",
+        "version": "1.0.0",
+        "created_at": "<ISO 8601 timestamp>",
+        "updated_at": "<ISO 8601 timestamp>",
+        "current_stage": "specify",
+        "checkpoints": {
+          "SPEC_VALIDATED": { "status": "pending", "timestamp": null, "agent": null, "retry_count": 0, "notes": null },
+          "PLAN_VALIDATED": { "status": "pending", "timestamp": null, "agent": null, "retry_count": 0, "notes": null },
+          "TASKS_VALIDATED": { "status": "pending", "timestamp": null, "agent": null, "retry_count": 0, "notes": null }
+        },
+        "artifacts": {
+          "spec": {
+            "path": "<SPEC_FILE>",
+            "status": "draft",
+            "last_modified": "<ISO 8601 timestamp>",
+            "validation_history": [],
+            "hash": "<SHA256 of spec content>"
+          },
+          "plan": { "path": null, "status": "pending", "last_modified": null, "validation_history": [], "hash": null },
+          "tasks": { "path": null, "status": "pending", "last_modified": null, "validation_history": [], "hash": null }
+        },
+        "validation_config": {
+          "max_retries": 3
+        }
+      }
+      ```
+   c. **If exists and same feature**: Update existing state:
+      - Set `current_stage` to "specify"
+      - Update `artifacts.spec.path`, `artifacts.spec.status` to "draft", `artifacts.spec.last_modified`, and `artifacts.spec.hash`
+   d. **Write updated state** to `.specify/feature-state.json`
+
+8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
    a. **Create Spec Quality Checklist**: Generate a checklist file at `SPECIFY_FEATURE_DIRECTORY/checklists/requirements.md` using the checklist template structure with these validation items:
 
@@ -183,7 +239,7 @@ Given that feature description, do this:
 
    c. **Handle Validation Results**:
 
-      - **If all items pass**: Mark checklist complete and proceed to step 7
+      - **If all items pass**: Mark checklist complete and proceed to step 8
 
       - **If items fail (excluding [NEEDS CLARIFICATION])**:
         1. List the failing items and specific issues
@@ -228,13 +284,77 @@ Given that feature description, do this:
 
    d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
 
-8. **Report completion** to the user with:
+8.5. **Delegate to Momus for Spec Validation**: After spec quality validation passes, invoke Momus to review the spec:
+   
+   a. **Load Momus agent definition**: Read `.opencode/agents/momus-review.md`
+   
+   b. **Prepare delegation prompt**: Include:
+      - Path to SPEC_FILE
+      - Path to SPECIFY_FEATURE_DIRECTORY
+      - Summary of spec content
+      - Checklist validation results
+   
+   c. **Output delegation notice**:
+      ```
+      ## Spec Validation by Momus
+      
+      Delegating spec review to Momus for validation before plan generation.
+      
+      Agent: Momus (spec reviewer)
+      Artifact: <SPEC_FILE>
+      Checkpoint: SPEC_VALIDATED
+      ```
+   
+   d. **Log delegation**: Record in `.specify/feature-state.json`:
+      - Set `artifacts.spec.status` to "in_review"
+      - Add validation attempt entry with agent="Momus", result="pending"
+   
+   e. **Await Momus response**:
+   
+      **Retry Loop for Rejection**:
+      - If Momus returns APPROVED: Proceed to step 9
+      - If Momus returns REJECTED with gaps:
+        1. Read current retry count from `.specify/feature-state.json` → `checkpoints.SPEC_VALIDATED.retry_count`
+        2. If retry_count >= max_retries (default: 3): 
+           - Update checkpoint status to "rejected"
+           - Report failure: "Maximum retry limit reached. Spec validation failed after N attempts."
+           - HALT - do not proceed to plan
+        3. Increment retry_count and update in state
+        4. Present gaps to user with this format:
+           ```
+           ## Momus Review Feedback
+           
+           **Status**: REJECTED (Retry N/M)
+           
+           The following gaps were found:
+           
+           | # | Category | Issue | Severity | Recommendation |
+           |---|----------|-------|----------|----------------|
+           | 1 | ... | ... | blocking | ... |
+           
+           Please address these gaps and the spec will be re-reviewed.
+           ```
+        5. Wait for user to update SPEC_FILE with corrections
+        6. After user confirms update, re-validate by re-running step 8.5 (delegate to Momus again)
+        7. User edits during retry loop do NOT consume a retry increment
+      - If Momus returns ERROR: Report error and pause advancement
+
+   f. **On Approval**: When Momus returns APPROVED:
+      - Update `.specify/feature-state.json`:
+        - Set `checkpoints.SPEC_VALIDATED.status` to "approved"
+        - Set `checkpoints.SPEC_VALIDATED.timestamp` to current ISO 8601
+        - Set `checkpoints.SPEC_VALIDATED.agent` to "Momus"
+        - Set `checkpoints.SPEC_VALIDATED.notes` to Momus summary
+        - Set `artifacts.spec.status` to "approved"
+      - Log validation success
+
+9. **Report completion** to the user with:
    - `SPECIFY_FEATURE_DIRECTORY` — the feature directory path
    - `SPEC_FILE` — the spec file path
    - Checklist results summary
    - Readiness for the next phase (`/speckit.clarify` or `/speckit.plan`)
 
-9. **Check for extension hooks**: After reporting completion, check if `.specify/extensions.yml` exists in the project root.
+10. **Check for extension hooks**: After reporting completion, check if `.specify/extensions.yml` exists in the project root.
    - If it exists, read it and look for entries under the `hooks.after_specify` key
    - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
    - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
