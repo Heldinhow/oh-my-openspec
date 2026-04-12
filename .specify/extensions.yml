@@ -1,7 +1,16 @@
-installed: []
+installed:
+  - prometheus-filter
 settings:
   auto_execute_hooks: true
 hooks:
+  before_write:
+  - extension: prometheus-filter
+    command: prometheus.filter.write
+    enabled: true
+    optional: false
+    prompt: null
+    description: Block non-.md file operations for Prometheus
+    condition: null
   before_constitution:
   - extension: git
     command: speckit.git.initialize

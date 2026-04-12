@@ -59,18 +59,34 @@ Configure per-agent model assignments in `.config/opencode/agents.models.jsonc`:
 1. User sends a natural request to Prometheus
 2. Prometheus classifies intent (feature/fix/refactor/other)
 3. If planning required, automatically enters specify mode
-4. Draft spec is created and delegated for review
+4. Draft spec is created and delegated for review (via Momus)
 5. Review feedback loops back to Prometheus for corrections
-6. Once approved, planning artifacts are generated
+6. Once approved, **Prometheus advances naturally to planning** (no `/speckit.*` commands)
 7. After tasks complete, automatic transition to build mode
+
+**Critical: Prometheus never mentions `/speckit.*` commands**
+- Prometheus IS the orchestrator — he executes the flow directly
+- External commands are implementation details, not user-facing behavior
+- Stage transitions happen naturally based on checkpoint status
 
 ### Stage Transitions
 
-Prometheus manages stage transitions based on:
+Prometheus manages stage transitions **automatically and naturally**:
 - Intent classification results
-- Review approval status
-- Artifact completeness
+- Review approval status (via Momus validation)
+- Artifact completeness (spec.md, plan.md, tasks.md)
 - User requests
+
+**Transition Rules:**
+| Current Stage | Condition | Next Stage |
+|--------------|-----------|------------|
+| specify | SPEC_VALIDATED + no clarifications needed | plan |
+| specify | SPEC_VALIDATED + clarifications needed | clarify |
+| clarify | All questions resolved | plan |
+| plan | PLAN_VALIDATED + no gaps | tasks |
+| tasks | TASKS_VALIDATED | handoff/build |
+
+Prometheus evaluates checkpoint status and **advances without mentioning external commands**.
 
 ### Build Mode
 

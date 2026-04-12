@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "agents": {
+    "prometheus": {
+      "allowed_extensions": [".md"],
+      "blocked_directories": [
+        "src/**",
+        "tests/**",
+        "lib/**",
+        "bin/**",
+        "obj/**",
+        ".specify/scripts/**"
+      ],
+      "blocked_operations": ["write", "edit", "create", "delete", "rename"]
+    }
+  },
+  "audit": {
+    "enabled": true,
+    "log_file": ".specify/audit.log"
+  }
+}

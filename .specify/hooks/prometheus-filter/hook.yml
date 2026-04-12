@@ -1,0 +1,19 @@
+name: prometheus-filter
+description: File filter hook that restricts Prometheus to .md files only
+version: 1.0
+entrypoint: hook.ps1
+parameters:
+  Operation:
+    type: string
+    description: File operation (write, edit, create, delete, rename)
+    required: false
+    default: write
+  TargetPath:
+    type: string
+    description: Target file path
+    required: false
+conditions:
+  agent: prometheus
+output:
+  success: exit 0
+  denied: exit 1 with stderr message

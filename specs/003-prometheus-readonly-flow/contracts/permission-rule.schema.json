@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PermissionRule",
+  "type": "object",
+  "required": ["id", "agent", "extensions", "effect"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique rule identifier"
+    },
+    "agent": {
+      "type": "string",
+      "enum": ["prometheus", "*"],
+      "description": "Agent this rule applies to"
+    },
+    "extensions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Allowed file extensions (e.g., .md)"
+    },
+    "directories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Blocked directory patterns (glob)"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "enum": ["read", "write", "edit", "create", "delete", "rename"]
+      }
+    },
+    "effect": {
+      "type": "string",
+      "enum": ["allow", "deny"]
+    },
+    "message": {
+      "type": "string",
+      "description": "Custom error message when denied"
+    }
+  }
+}
