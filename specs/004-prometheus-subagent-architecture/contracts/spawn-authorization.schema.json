@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpawnAuthorization",
+  "description": "Schema for subagent spawn authorization request/response",
+  "type": "object",
+  "definitions": {
+    "AgentType": {
+      "type": "string",
+      "enum": ["primary", "subagent"]
+    },
+    "SpawnStatus": {
+      "type": "string",
+      "enum": ["pending", "approved", "denied", "fulfilled", "failed"]
+    },
+    "SpawnRequest": {
+      "type": "object",
+      "required": ["request_id", "session_id", "requestor_id", "target_type", "status", "created_at"],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "description": "Unique spawn request identifier"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Parent orchestration session ID"
+        },
+        "requestor_id": {
+          "type": "string",
+          "description": "ID of agent initiating spawn"
+        },
+        "requestor_type": {
+          "$ref": "#/definitions/AgentType"
+        },
+        "target_type": {
+          "type": "string",
+          "description": "Type/capability of subagent to spawn"
+        },
+        "task_assignment": {
+          "type": "object",
+          "description": "Task context and parameters"
+        },
+        "status": {
+          "$ref": "#/definitions/SpawnStatus"
+        },
+        "denial_reason": {
+          "type": "string",
+          "description": "Reason for denial if status is denied"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "SpawnViolation": {
+      "type": "object",
+      "required": ["violation_id", "session_id", "violator_id", "violation_type", "notified_prometheus_id", "occurred_at"],
+      "properties": {
+        "violation_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "violator_id": {
+          "type": "string",
+          "description": "ID of agent that attempted violation"
+        },
+        "violation_type": {
+          "type": "string",
+          "enum": ["subagent_spawn_primary", "unauthorized_spawn"]
+        },
+        "details": {
+          "type": "string"
+        },
+        "notified_prometheus_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
