@@ -71,7 +71,7 @@ describe('Checkpoint Invalidation Integration Tests (SC-005)', () => {
       (entry: any) => entry.result === 'invalidated'
     );
     expect(invalidationEntry).toBeDefined();
-    expect(invalidationEntry.reason).toBe('artifact_modified');
+    expect(invalidationEntry.reason).toBe('artifact_modified:spec');
   });
 
   it('SC-005: plan modification invalidates PLAN_VALIDATED', () => {

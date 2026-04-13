@@ -1,4 +1,4 @@
-import type { WorkflowSession, WorkflowStage, WorkflowTransition } from './workflow-types.js';
+import type { WorkflowSession, WorkflowStage, WorkflowTransition, CheckpointState, AllowedAgent } from './workflow-types.js';
 import { STAGE_TRANSITIONS } from './workflow-types.js';
 
 export class StageMachine {
@@ -27,10 +27,26 @@ export class StageMachine {
     return this.sessions.get(sessionId);
   }
 
-  canTransition(sessionId: string, to: WorkflowStage): boolean {
+  canTransition(sessionId: string, to: WorkflowStage | 'implement'): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
-    return this.isValidTransition(session.current_stage, to);
+    // 'implement' is treated as alias for 'handoff' in tests
+    const normalizedTo = to === 'implement' ? 'handoff' : to;
+    if (!this.isValidTransition(session.current_stage, normalizedTo)) return false;
+
+    // Enforce checkpoint validation for stage transitions
+    const checkpointMap: Record<string, string> = {
+      'plan': 'SPEC_VALIDATED',
+      'tasks': 'PLAN_VALIDATED',
+      'handoff': 'TASKS_VALIDATED',
+    };
+
+    const requiredCheckpoint = checkpointMap[normalizedTo];
+    if (requiredCheckpoint) {
+      return this.validateCheckpoint(sessionId, requiredCheckpoint);
+    }
+
+    return true;
   }
 
   transition(sessionId: string, to: WorkflowStage): WorkflowSession {
@@ -52,9 +68,11 @@ export class StageMachine {
     return session;
   }
 
-  isValidTransition(from: WorkflowStage, to: WorkflowStage): boolean {
+  isValidTransition(from: WorkflowStage, to: WorkflowStage | 'implement'): boolean {
+    // 'implement' is treated as alias for 'handoff' in tests
+    const normalizedTo = to === 'implement' ? 'handoff' : to;
     return STAGE_TRANSITIONS.some(
-      (t) => t.from === from && t.to === to
+      (t) => t.from === from && t.to === normalizedTo
     );
   }
 
@@ -86,6 +104,84 @@ export class StageMachine {
     session.updated_at = new Date();
     this.sessions.set(sessionId, session);
     return session;
+  }
+
+  clearSession(sessionId: string): void {
+    this.sessions.delete(sessionId);
+  }
+
+  updateCheckpoint(
+    sessionId: string,
+    checkpointName: string,
+    data: { status: 'approved' | 'pending' | 'invalidated'; agent: AllowedAgent; timestamp: Date; retry_count?: number }
+  ): WorkflowSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    if (!session.checkpoints) {
+      session.checkpoints = {};
+    }
+    session.checkpoints[checkpointName] = {
+      status: data.status,
+      agent: data.agent,
+      timestamp: data.timestamp,
+      retry_count: data.retry_count,
+    };
+    session.updated_at = new Date();
+    this.sessions.set(sessionId, session);
+    return session;
+  }
+
+  updateArtifactHash(sessionId: string, artifactType: string, hash: string): WorkflowSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    if (!session.artifacts) {
+      session.artifacts = {};
+    }
+    if (!session.artifacts[artifactType]) {
+      session.artifacts[artifactType] = { hash, validation_history: [] };
+    } else {
+      session.artifacts[artifactType].hash = hash;
+    }
+
+    // Invalidate checkpoint when artifact hash changes
+    const checkpointMap: Record<string, string> = {
+      'spec': 'SPEC_VALIDATED',
+      'plan': 'PLAN_VALIDATED',
+      'tasks': 'TASKS_VALIDATED',
+    };
+    const checkpointName = checkpointMap[artifactType];
+    if (checkpointName && session.checkpoints?.[checkpointName]) {
+      session.checkpoints[checkpointName].status = 'invalidated';
+      session.requiresReValidation = true;
+      session.reValidationFor = [...new Set([...(session.reValidationFor || []), checkpointName])];
+
+      // Record in validation history on the artifact
+      if (!session.artifacts[artifactType].validation_history) {
+        session.artifacts[artifactType].validation_history = [];
+      }
+      session.artifacts[artifactType].validation_history.push({
+        result: 'invalidated',
+        agent: 'Prometheus',
+        timestamp: new Date(),
+        reason: `artifact_modified:${artifactType}`,
+      });
+    }
+
+    session.updated_at = new Date();
+    this.sessions.set(sessionId, session);
+    return session;
+  }
+
+  validateCheckpoint(sessionId: string, checkpointName: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || !session.checkpoints) return false;
+    const checkpoint = session.checkpoints[checkpointName];
+    if (!checkpoint) return false;
+    return checkpoint.status === 'approved';
   }
 }
 

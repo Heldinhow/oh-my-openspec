@@ -1,5 +1,6 @@
 import type { PlanningArtifactSet } from '../core/workflow-types.js';
 import { existsSync } from 'fs';
+import { stageMachine } from '../core/stage-machine.js';
 
 export class ArtifactTracker {
   private artifacts: Map<string, PlanningArtifactSet> = new Map();
@@ -54,6 +55,12 @@ export class ArtifactTracker {
     const artifact = this.artifacts.get(featureDirectory);
     if (!artifact) return false;
     return artifact.artifact_status === 'complete' && this.checkCompleteness(featureDirectory);
+  }
+
+  recordModification(sessionId: string, artifactType: string, hash: string): void {
+    // Delegating to stageMachine.updateArtifactHash which handles
+    // checkpoint invalidation and validation history recording
+    stageMachine.updateArtifactHash(sessionId, artifactType, hash);
   }
 }
 

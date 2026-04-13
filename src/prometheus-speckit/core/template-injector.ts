@@ -57,6 +57,17 @@ export class TemplateInjector {
   isCommandAllowed(command: string): command is SpeckitCommand {
     return ['specify', 'clarify', 'plan', 'tasks', 'implement'].includes(command);
   }
+
+  loadTemplate(templateName: string): string {
+    const commandMap: Record<string, SpeckitCommand> = {
+      'spec': 'specify',
+      'plan': 'plan',
+      'tasks': 'tasks',
+    };
+    const command = commandMap[templateName];
+    if (!command) throw new Error(`Unknown template: ${templateName}`);
+    return this.loadCommandTemplate(command);
+  }
 }
 
 export const templateInjector = new TemplateInjector();

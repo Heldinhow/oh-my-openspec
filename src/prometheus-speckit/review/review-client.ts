@@ -1,5 +1,6 @@
 import type { AllowedAgent, SpecReviewResult } from '../core/workflow-types.js';
 import { modelConfigLoader } from '../config/model-config.js';
+import { stageMachine } from '../core/stage-machine.js';
 
 export interface ReviewRequest {
   sessionId: string;
@@ -94,6 +95,35 @@ If there are issues, set approved=false and list specific gaps.`;
         gaps: ['Review output parse error'],
         reviewed_at: new Date(),
       };
+    }
+  }
+
+  logReviewResult(reviewResult: SpecReviewResult): boolean {
+    try {
+      const session = stageMachine.getSession(reviewResult.session_id);
+      if (!session) return false;
+
+      if (!session.validationHistory) session.validationHistory = [];
+      session.validationHistory.push({
+        result: reviewResult.approved ? 'approved' : 'rejected',
+        agent: reviewResult.review_agent,
+        timestamp: reviewResult.reviewed_at,
+        reason: reviewResult.gaps.length > 0 ? reviewResult.gaps.join('; ') : undefined,
+      });
+
+      if (!reviewResult.approved && reviewResult.gaps.length > 0) {
+        session.currentGaps = [...(session.currentGaps || []), ...reviewResult.gaps];
+      }
+
+      if (reviewResult.approved) {
+        session.currentGaps = (session.currentGaps || []).filter(
+          g => !reviewResult.gaps.includes(g)
+        );
+      }
+
+      return true;
+    } catch {
+      return false;
     }
   }
 }

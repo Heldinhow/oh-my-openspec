@@ -21,6 +21,25 @@ export interface IntentClassification {
   created_at: Date;
 }
 
+export interface ValidationHistoryEntry {
+  result: 'approved' | 'rejected' | 'invalidated';
+  agent: AllowedAgent;
+  timestamp: Date;
+  reason?: string;
+}
+
+export interface ArtifactState {
+  hash: string;
+  validation_history: ValidationHistoryEntry[];
+}
+
+export interface CheckpointState {
+  status: 'approved' | 'pending' | 'invalidated';
+  agent: AllowedAgent;
+  timestamp: Date;
+  retry_count?: number;
+}
+
 export interface WorkflowSession {
   session_id: string;
   active_agent: AllowedAgent;
@@ -30,6 +49,12 @@ export interface WorkflowSession {
   status: WorkflowStatus;
   started_at: Date;
   updated_at: Date;
+  artifacts?: Record<string, ArtifactState>;
+  checkpoints?: Record<string, CheckpointState>;
+  validationHistory?: ValidationHistoryEntry[];
+  currentGaps?: string[];
+  requiresReValidation?: boolean;
+  reValidationFor?: string[];
 }
 
 export type AllowedAgent = 'Prometheus' | 'Momus' | 'Metis' | 'Librarian' | 'Oracle';
