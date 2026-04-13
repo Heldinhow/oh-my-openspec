@@ -61,24 +61,44 @@ export class PrometheusOrchestrator {
   }
 
   private buildSpecifyMessage(classification: IntentClassification): string {
-    return `[prometheus-speckit] Intent classified as '${classification.intent_type}' ` +
+    return `Intent detected as '${classification.intent_type}' ` +
       `(confidence: ${(classification.confidence * 100).toFixed(0)}%). ` +
-      `Planning required — entering specify mode. ` +
-      `Run /speckit.specify to generate the specification draft.`;
+      `I'll create the specification for you.`;
   }
 
   private buildClarifyMessage(classification: IntentClassification): string {
-    return `[prometheus-speckit] Intent classified as '${classification.intent_type}' ` +
-      `but confidence is low. ` +
-      `Please clarify: what specifically needs to be planned?`;
+    return `Intent detected as '${classification.intent_type}' ` +
+      `but I need more details. ` +
+      `Could you please clarify what specifically needs to be built?`;
   }
 
   private buildSkipMessage(
     classification: IntentClassification,
     gateResult: ReturnType<typeof planningGate.evaluate>
   ): string {
-    return `[prometheus-speckit] ${gateResult.reason}. ` +
-      `No planning required for this request.`;
+    return `${gateResult.reason}. ` +
+      `No planning workflow needed for this request.`;
+  }
+
+  private buildSpecCreatedMessage(featureDir: string): string {
+    return `Specification created successfully. ` +
+      `File saved to: ${featureDir}/spec.md`;
+  }
+
+  private buildPlanCreatedMessage(featureDir: string): string {
+    return `Implementation plan created successfully. ` +
+      `File saved to: ${featureDir}/plan.md`;
+  }
+
+  private buildTasksCreatedMessage(featureDir: string): string {
+    return `Task breakdown created successfully. ` +
+      `File saved to: ${featureDir}/tasks.md`;
+  }
+
+  private buildReadyForImplementationMessage(): string {
+    return `All artifacts are complete and validated. ` +
+      `You are ready to implement the feature. ` +
+      `The specification, plan, and task breakdown are ready in the feature directory.`;
   }
 
   private generateSessionId(): string {
