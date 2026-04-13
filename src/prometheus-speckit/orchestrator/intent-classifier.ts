@@ -1,4 +1,4 @@
-import type { IntentClassification, IntentType } from '../core/workflow-types.js';
+import type { IntentClassification, IntentType, WorkflowStage } from '../core/workflow-types.js';
 
 interface ClassificationResult {
   intent: IntentType;
@@ -56,7 +56,7 @@ const NO_PLANNING_TRIGGERS: RegExp[] = [
 ];
 
 export class IntentClassifier {
-  classify(input: string): IntentClassification {
+  classify(input: string): IntentClassification & { requiresPlanning: boolean; planningStage: WorkflowStage } {
     const intent_type = this.detectIntentType(input);
     const planning_required = this.detectPlanningRequired(input, intent_type);
     const confidence = this.calculateConfidence(input, intent_type);
@@ -68,8 +68,30 @@ export class IntentClassifier {
       planning_required,
       confidence,
       created_at: new Date(),
+      requiresPlanning: planning_required,
+      planningStage: 'specify' as WorkflowStage,
     };
   }
+
+
+  /**
+   * Get a natural language description of the intent without revealing internal processing.
+   */
+  getIntentDescription(classification: IntentClassification): string {
+    const intentDescriptions: Record<IntentType, string> = {
+      'feature': 'new feature request',
+      'fix': 'bug fix request',
+      'refactor': 'refactoring request',
+      'other': 'general request',
+    };
+
+    const base = intentDescriptions[classification.intent_type];
+    if (classification.confidence < 0.5) {
+      return base + ' (need more details)';
+    }
+    return base;
+  }
+
 
   private detectIntentType(input: string): IntentType {
     for (const [type, patterns] of Object.entries(INTENT_PATTERNS)) {
