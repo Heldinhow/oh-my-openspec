@@ -9,7 +9,7 @@ export interface StatusMessage {
 export class StatusMessages {
   modeTransition(from: WorkflowMode, to: WorkflowMode): StatusMessage {
     return {
-      text: `[prometheus-speckit] Mode transition: ${from} → ${to}`,
+      text: `Workflow mode changed: ${from} → ${to}`,
       mode: to,
       stage: 'build',
     };
@@ -17,7 +17,7 @@ export class StatusMessages {
 
   stageTransition(from: WorkflowStage, to: WorkflowStage): StatusMessage {
     return {
-      text: `[prometheus-speckit] Stage transition: ${from} → ${to}`,
+      text: `Stage transition: ${from} → ${to}`,
       mode: 'plan',
       stage: to,
     };
@@ -25,7 +25,7 @@ export class StatusMessages {
 
   specApproved(): StatusMessage {
     return {
-      text: '[prometheus-speckit] Spec approved. Proceeding to plan.',
+      text: 'Specification approved. Proceeding to planning phase.',
       mode: 'plan',
       stage: 'plan',
     };
@@ -33,7 +33,7 @@ export class StatusMessages {
 
   gapsDetected(count: number): StatusMessage {
     return {
-      text: `[prometheus-speckit] ${count} gap(s) detected in spec. Resolving before proceeding.`,
+      text: `${count} gap(s) detected in specification. Resolving before proceeding.`,
       mode: 'plan',
       stage: 'clarify',
     };
@@ -41,7 +41,7 @@ export class StatusMessages {
 
   tasksComplete(): StatusMessage {
     return {
-      text: '[prometheus-speckit] Tasks complete. Ready for implementation.',
+      text: 'Tasks breakdown complete. You are ready to implement.',
       mode: 'plan',
       stage: 'handoff',
     };
@@ -49,7 +49,7 @@ export class StatusMessages {
 
   implementRequested(): StatusMessage {
     return {
-      text: '[prometheus-speckit] Implementation requested. Transitioning to build mode.',
+      text: 'Implementation requested.',
       mode: 'build',
       stage: 'build',
     };
@@ -57,7 +57,7 @@ export class StatusMessages {
 
   reviewDelegated(agentName: string): StatusMessage {
     return {
-      text: `[prometheus-speckit] Spec review delegated to ${agentName}.`,
+      text: `Specification review delegated to ${agentName}.`,
       mode: 'plan',
       stage: 'specify',
     };
@@ -65,7 +65,7 @@ export class StatusMessages {
 
   reviewApproved(): StatusMessage {
     return {
-      text: '[prometheus-speckit] Spec review approved. No gaps found.',
+      text: 'Specification review approved. No gaps found.',
       mode: 'plan',
       stage: 'plan',
     };
@@ -73,11 +73,13 @@ export class StatusMessages {
 
   buildModeActive(): StatusMessage {
     return {
-      text: '[prometheus-speckit] Build mode active. Implementation orchestration underway.',
+      text: 'Build mode active. Implementation orchestration underway.',
       mode: 'build',
       stage: 'build',
     };
   }
 }
+
+export const CLARIFICATION_PROMPT = 'I need some clarification to proceed with your request. Could you please provide more details about what you need?';
 
 export const statusMessages = new StatusMessages();
